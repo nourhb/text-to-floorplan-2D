@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text → Floor Plan (SVG)</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #0b1220;
+        --panel: #0f1a2e;
+        --text: #e8eefc;
+        --muted: #a6b2d4;
+        --border: rgba(255, 255, 255, 0.12);
+        --accent: #6ea8fe;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 600px at 20% 0%, #14244a 0%, var(--bg) 55%, #070b14 100%);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px;
+      }
+      .card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px;
+        backdrop-filter: blur(10px);
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      textarea {
+        width: 100%;
+        min-height: 140px;
+        resize: vertical;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 12px;
+        outline: none;
+      }
+      textarea:focus {
+        border-color: rgba(110, 168, 254, 0.65);
+        box-shadow: 0 0 0 4px rgba(110, 168, 254, 0.15);
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: 12px;
+      }
+      select,
+      button {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 12px;
+        outline: none;
+      }
+      button {
+        cursor: pointer;
+        border-color: rgba(110, 168, 254, 0.55);
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+      .grid {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .preview {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        overflow: auto;
+        padding: 8px;
+      }
+      .error {
+        margin-top: 12px;
+        color: #fecaca;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        padding: 10px 12px;
+        border-radius: 12px;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Text → Floor Plan (SVG)</h1>
+        <p>Describe rooms + constraints. The server returns a generated SVG you can download.</p>
+      </div>
+
+      <div class="card" style="margin-top: 16px">
+        <label class="meta" for="input">Description</label>
+        <textarea id="input" placeholder="Example: Apartment 2 bedrooms. Entry north, living in center, kitchen east. Approx 10x8m."></textarea>
+
+        <div class="row">
+          <div>
+            <div class="meta">Norms</div>
+            <select id="norms">
+              <option value="fr">France / Tunisia (CAD)</option>
+              <option value="int">International</option>
+            </select>
+          </div>
+          <button id="btn">Generate</button>
+          <button id="dl" disabled>Download SVG</button>
+          <span id="status" class="meta"></span>
+        </div>
+
+        <div id="err" class="error" style="display: none"></div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="row" style="margin-top: 0">
+            <div style="font-weight: 800">Preview</div>
+            <div id="dims" class="meta"></div>
+            <div id="rooms" class="meta"></div>
+          </div>
+          <div class="preview">
+            <div id="svg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const inputEl = document.getElementById('input');
+      const normsEl = document.getElementById('norms');
+      const btn = document.getElementById('btn');
+      const dl = document.getElementById('dl');
+      const err = document.getElementById('err');
+      const status = document.getElementById('status');
+      const svgEl = document.getElementById('svg');
+      const dimsEl = document.getElementById('dims');
+      const roomsEl = document.getElementById('rooms');
+
+      let lastSvg = '';
+
+      function showError(msg) {
+        err.style.display = 'block';
+        err.textContent = msg;
+      }
+      function clearError() {
+        err.style.display = 'none';
+        err.textContent = '';
+      }
+      function downloadSvg(svg, filename = 'plan-2d.svg') {
+        const svgStr = String(svg || '').trim();
+        if (!svgStr) return;
+        const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      dl.addEventListener('click', () => downloadSvg(lastSvg));
+
+      btn.addEventListener('click', async () => {
+        const input = String(inputEl.value || '').trim();
+        const norms = String(normsEl.value || 'fr').trim();
+        if (!input) return;
+
+        clearError();
+        btn.disabled = true;
+        dl.disabled = true;
+        status.textContent = 'Generating…';
+        dimsEl.textContent = '';
+        roomsEl.textContent = '';
+        svgEl.innerHTML = '';
+        lastSvg = '';
+
+        try {
+          const res = await fetch('/ai/plan-2d', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input, norms }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data || !data.success) {
+            throw new Error((data && data.message) || `HTTP ${res.status}`);
+          }
+          if (!data.data || !data.data.svg) throw new Error('Missing SVG in response');
+          lastSvg = data.data.svg;
+          svgEl.innerHTML = lastSvg;
+
+          const plan = data.data.plan || null;
+          if (plan && plan.width_m && plan.height_m) dimsEl.textContent = `${plan.width_m}m × ${plan.height_m}m`;
+          if (plan && Array.isArray(plan.rooms)) roomsEl.textContent = `Rooms: ${plan.rooms.length}`;
+
+          dl.disabled = false;
+          status.textContent = 'Done';
+        } catch (e) {
+          showError(String(e && e.message ? e.message : e));
+          status.textContent = '';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
+

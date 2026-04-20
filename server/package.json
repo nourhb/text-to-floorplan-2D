@@ -1,0 +1,22 @@
+{
+  "name": "text-to-floor-plan-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone Text → 2D Floor Plan (SVG) generator.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "openai": "^5.16.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
+

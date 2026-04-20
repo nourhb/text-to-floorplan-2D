@@ -1,0 +1,1084 @@
+
+🏗
+UNIVERSAL ARCHITECTURAL
+SPECIFICATION GUIDE
+AI Floor Plan Generation System — Complete Input Reference
+From studio (15 m²) to villa (1000 m²) · All input formats · All languages
+
+📘  This document is the system bible for the AI floor plan engine. It defines every possible input a user can provide — area formats, dimensions, room requests, style preferences, constraints, norms — and exactly how the system must interpret and respond to each one.
+
+Contents
+
+
+
+SECTION 1 — SIZE & DIMENSION INPUTS
+
+1. How Users Specify Size
+Users describe the size of their space in dozens of different ways. The system must recognize and normalize ALL of them into a canonical internal format: { totalArea, width, height, aspectRatio, confidence }.
+
+1.1 Area-Only Inputs
+The user gives only a total square footage or square meter count, with no width or height.
+
+User Input Example
+Parsed Area (m²)
+System Action
+studio de 20m²
+20
+Use aspect ratio 1.4:1 → 5.3m × 3.8m
+appartement 35 m²
+35
+Use 1.5:1 → 7.2m × 4.9m
+50m²
+50
+Use 1.4:1 → 8.4m × 6.0m
+65 mètres carrés
+65
+Use 1.35:1 → 9.4m × 6.9m
+80 m2
+80
+Use 1.3:1 → 10.2m × 7.8m
+maison 100m²
+100
+Use 1.25:1 → 11.2m × 8.9m
+120 metres carres
+120
+Use 1.2:1 → 12.0m × 10.0m
+villa 200 m²
+200
+Use 1.15:1 → 15.2m × 13.2m
+400 sq ft
+37.2
+Convert: 1 sq ft = 0.0929 m²
+1200 square feet
+111.5
+Convert then apply aspect ratio
+about 90m²
+90
+Flag confidence=medium, proceed
+around 150 m²
+150
+Flag confidence=medium, proceed
+roughly 60m²
+60
+Accept ±10% flexibility in room budget
+
+1.2 Width × Height Inputs
+The user specifies exact or approximate dimensions. Width always = horizontal axis, Height = depth from front to back.
+
+User Input Example
+Width (m)
+Height (m)
+Area (m²)
+10m × 8m
+10.0
+8.0
+80
+10 par 8
+10.0
+8.0
+80
+largeur 12m, profondeur 9m
+12.0
+9.0
+108
+width 15m height 10m
+15.0
+10.0
+150
+7.5m x 6m
+7.5
+6.0
+45
+30ft x 25ft
+9.1
+7.6
+69.3
+8 mètres sur 6
+8.0
+6.0
+48
+terrain 20×15
+20.0
+15.0
+300
+emprise 13m de large sur 9m de profondeur
+13.0
+9.0
+117
+bâtiment 25m façade, 12m de profond
+25.0
+12.0
+300
+plot 40ft wide by 60ft deep
+12.2
+18.3
+223
+
+1.3 Range Inputs
+User gives a range — system uses midpoint and flags as flexible.
+
+User Input
+Min m²
+Max m²
+Target Used
+Flexibility
+entre 60 et 80 m²
+60
+80
+70
+±14%
+60 à 80m²
+60
+80
+70
+±14%
+from 100 to 130 m²
+100
+130
+115
+±13%
+80–100 m²
+80
+100
+90
+±11%
+autour de 120m² (±10%)
+108
+132
+120
+±10%
+minimum 150m²
+150
+∞
+165
+expand up
+pas plus de 80m²
+0
+80
+75
+shrink down
+maximum 200 m²
+0
+200
+185
+shrink down
+at least 50m²
+50
+∞
+58
+expand up
+
+1.4 Area Range by Building Type
+When no size is given, the system infers from building type keywords:
+
+Keyword Detected
+Default Area
+Default Aspect Ratio
+Min Rooms
+studio / studette
+22 m²
+1.3:1
+1 main + SdB + WC
+T1 / F1 / 1-pièce
+30 m²
+1.4:1
+1 ch + SdB + WC
+T2 / F2 / 2-pièces
+45 m²
+1.4:1
+1 ch + séjour + SdB + WC
+T3 / F3 / 3-pièces
+65 m²
+1.35:1
+2 ch + séjour + cuisine + SdB + WC
+T4 / F4 / 4-pièces
+85 m²
+1.3:1
+3 ch + séjour + cuisine + SdB + WC
+T5 / F5 / 5-pièces
+110 m²
+1.25:1
+4 ch + séjour + cuisine + 2SdB + WC
+maison / villa
+120 m²
+1.2:1
+3 ch + séjour + cuisine + SdB + WC + garage
+grande villa / demeure
+250 m²
+1.15:1
+5 ch + 3 SdB + double séjour + garage
+bungalow
+60 m²
+1.6:1 (wide)
+2 ch + séjour + cuisine + SdB
+duplex
+100 m²
+1.2:1 per floor
+split over 2 floors
+loft
+80 m²
+1.8:1 (very wide)
+open plan priority
+penthouse
+150 m²
+1.1:1 (near square)
+luxury layout rules
+tiny house
+18 m²
+2.5:1 (long narrow)
+multi-function spaces
+
+1.5 Unit Conversion Reference
+All inputs are normalized to meters and m² internally.
+
+Input Unit
+Multiply by
+To get
+square feet (sq ft / ft²)
+0.0929
+m²
+square yards (sq yd)
+0.8361
+m²
+square meters (m²)
+1.0
+m²
+acres
+4046.86
+m²
+feet (ft / ')
+0.3048
+m
+inches (in / ")
+0.0254
+m
+yards (yd)
+0.9144
+m
+centimeters (cm)
+0.01
+m
+millimeters (mm)
+0.001
+m
+
+SECTION 2 — ROOM TYPE INPUTS
+
+2. Room Detection & Alias Dictionary
+Every room name a user could type — in French, English, or hybrid — must map to an internal canonical room type. Missing a room from this dictionary = the room silently disappears from the layout.
+
+2.1 Complete Room Alias Dictionary
+
+Internal Type
+French Aliases
+English Aliases
+Default Size (m²)
+bedroom
+chambre, chambre à coucher, dortoir, room
+bedroom, room, bed room, sleeping room
+10
+master_bedroom
+chambre principale, suite parentale, chambre master, grande chambre
+master bedroom, master suite, primary bedroom
+14
+living_room
+séjour, salon, salle de séjour, living, pièce de vie
+living room, lounge, sitting room, reception
+18
+kitchen
+cuisine, coin cuisine, kitchenette
+kitchen, kitchenette, cooking area
+9
+dining_room
+salle à manger, SAM, coin repas, espace repas
+dining room, dining area, eating area
+10
+open_plan
+salon-cuisine, cuisine ouverte, séjour-cuisine, espace ouvert, loft, américaine
+open plan, open kitchen, open layout
+combined
+bathroom
+salle de bain, SdB, salle d'eau, SdE, bain, douche
+bathroom, bath, shower room, wet room
+5
+wc
+WC, w.c., toilettes, toilette, water, cabinet, petit coin, toilettes séparées
+toilet, WC, restroom, lavatory, loo, half bath
+1.8
+entry
+entrée, hall, hall d'entrée, vestibule, accueil
+entry, entrance, hallway, foyer, lobby
+4
+corridor
+couloir, dégagement, circulation, passage, couloir de distribution
+corridor, hallway, passage, landing
+3
+garage
+garage, abri voiture, carport
+garage, carport, parking
+20
+laundry
+buanderie, laverie, local linge, espace buanderie
+laundry, utility room, laundry room
+4
+storage
+rangement, placard, débarras, cellier, remise, réserve
+storage, closet, pantry, utility, storeroom
+3
+office
+bureau, espace bureau, salle de travail, télétravail
+office, study, home office, workspace
+9
+dressing
+dressing, dressing-room, walk-in, walk-in closet
+dressing room, walk-in closet, wardrobe room
+5
+terrace
+terrasse, balcon, loggia, véranda
+terrace, balcony, loggia, veranda, patio
+12
+boiler_room
+chaufferie, local technique, cellier technique
+boiler room, utility room, plant room
+4
+gym
+salle de sport, salle de gym, fitness
+gym, fitness room, exercise room
+15
+cinema
+salle cinéma, home cinéma, salle de jeux
+cinema room, home theater, media room
+20
+
+2.2 Room Count Parsing
+
+User Expression
+Parsed Count
+Notes
+3 chambres
+3
+Direct number
+trois chambres
+3
+Written number — French
+three bedrooms
+3
+Written number — English
+une chambre
+1
+Article = 1
+a bedroom
+1
+Indefinite article = 1
+des chambres
+2
+Vague plural → default 2, flag to user
+plusieurs chambres
+3
+Several → default 3
+quelques chambres
+2
+A few → default 2
+beaucoup de chambres
+4
+Many → default 4+
+chambre + bureau
+1 bedroom + 1 office
+Plus sign = separate rooms
+2 chambres dont une suite
+1 master + 1 bedroom
+Suite = master_bedroom
+suite parentale + 2 chambres enfants
+1 master + 2 bedrooms
+Parentale = master
+chambre d'amis
+1 bedroom
+Tagged as guest room
+chambre enfant
+1 bedroom
+Tagged as child room (smaller ok: 9m²)
+
+2.3 Room Size Overrides
+Users may specify exact sizes for individual rooms. These override the default budget.
+
+User Expression
+Parsed Override
+System Action
+grande chambre de 15m²
+bedroom: 15m²
+Reserve exactly 15m², adjust others
+petite salle de bain 3m²
+bathroom: 3m²
+Warn if below norm (min 3.5m²)
+salon de 30m²
+living_room: 30m²
+Reserve 30m²
+cuisine 10m²
+kitchen: 10m²
+Reserve 10m²
+chambre au moins 12m²
+bedroom: min 12m²
+Reserve 12m², expand if budget allows
+bureau pas plus de 8m²
+office: max 8m²
+Cap at 8m²
+WC standard
+wc: 1.8m²
+Use norm minimum
+grande salle de bain avec baignoire
+bathroom: min 6m²
+Baignoire requires 6m² min
+salle d'eau avec douche italienne
+bathroom: min 4m²
+Italian shower = 1m²×1m² min
+
+SECTION 3 — SPATIAL CONSTRAINTS & RELATIONSHIPS
+
+3. Spatial Relationship Keywords
+These are the most critical inputs — they define HOW rooms relate to each other, not just what rooms exist. The system must parse all of them and inject them as edges in the spatial graph.
+
+3.1 Proximity Keywords
+Keyword / Phrase
+Graph Edge Added
+Implementation Rule
+près de l'entrée / near the entry
+room → NEAR → entry
+Max 1 room separation, share a wall if possible
+à côté de / next to / adjacent to
+room A → ADJACENT → room B
+Must share a wall
+juste après / right after
+room A → DIRECTLY_AFTER → room B
+B is accessed through A's doorway
+dans le prolongement de
+room A → INLINE → room B
+A and B are on the same axis
+loin de / away from / not near
+room A → DISTANT → room B
+At least 2 rooms separation
+séparé de / separated from
+room A → NO_SHARED_WALL → room B
+No shared wall allowed
+donnant sur / overlooking
+room → FACES → direction/room
+Window facing that direction
+en face de / facing
+room A → OPPOSITE → room B
+A and B on opposite sides of plan
+au bout de / at the end of
+room → TERMINUS → corridor
+Room is last on corridor
+dans le dégagement / in the hallway
+room → INSIDE → corridor
+Carved from corridor space, not separate room
+attenant à / adjoining
+room A → ADJOINS → room B
+Share a wall, may share door
+communicant / connecting
+room A → DIRECT_DOOR → room B
+Internal door between A and B
+indépendant / independent
+room → STANDALONE → all
+Accessed only from corridor/entry
+
+3.2 Orientation & Light Keywords
+Keyword / Phrase
+Constraint Added
+Priority Level
+facing south / côté sud / exposé au sud
+living_room or main room on south wall
+HIGH
+beaucoup de lumière / lots of light / bright
+maximize window count on all rooms
+HIGH
+lumière naturelle / natural light
+all habitable rooms get exterior wall windows
+HIGH
+vue sur jardin / garden view
+living/kitchen face garden side (back)
+MEDIUM
+côté rue / street facing
+entry + living on front (south or north by norm)
+MEDIUM
+nord / north
+given room faces north
+MEDIUM
+est / east
+given room faces east — morning light
+MEDIUM
+ouest / west
+given room faces west — afternoon light
+MEDIUM
+ensoleillé / sunny
+same as south-facing priority
+HIGH
+sombre acceptable / dark ok
+room can be interior (no exterior wall)
+LOW
+cuisine côté jardin
+kitchen faces garden/back
+MEDIUM
+chambres côté calme
+bedrooms on quietest side (away from street)
+MEDIUM
+
+3.3 Layout Style Keywords
+Keyword
+Effect on Layout
+Incompatible With
+open plan / espace ouvert / salon-cuisine ouvert
+Remove wall between living + kitchen, merge into one zone
+separate kitchen wall
+cuisine américaine / American kitchen
+Kitchen open to dining, peninsula counter divider
+closed kitchen
+cuisine fermée / closed kitchen
+Full walls around kitchen, door required
+open plan
+îlot / island / kitchen island
+Central island in kitchen, min room size 12m²
+kitchen < 10m²
+éviter les couloirs / no long corridors
+Minimize corridor, max 2m length
+many rooms needing access
+couloir de distribution / central corridor
+Add corridor as spine, rooms branch off it
+open plan
+en L / L-shaped
+Force L-shaped zone arrangement
+-
+en U / U-shaped
+Wrap rooms around central courtyard
+small plots
+plain-pied / single storey / bungalow
+No stairs, all rooms on one level
+duplex/triplex
+duplex / sur deux niveaux
+Split into 2 floors, stairs required
+plain-pied
+loft / industriel
+Maximize open space, minimize walls
+many separate rooms
+cloisonné / compartimenté
+All rooms fully enclosed
+open plan
+suite parentale / master suite
+Master bedroom + en-suite bathroom + dressing as one cluster
+-
+
+SECTION 4 — NORM COMPLIANCE TABLES
+
+4. Room Size Norms by Area Budget
+These tables define the MINIMUM and MAXIMUM room sizes for each total house area. The system enforces these regardless of what the user requests. If the user requests a room below minimum, show a warning but attempt to meet it.
+
+4.1 Studio & Micro (15–35 m²)
+Room
+Min m²
+Max m²
+Notes
+Main space (living/sleeping)
+9
+22
+Must contain bed + seating
+Bathroom / Salle d'eau
+2.5
+5
+Shower only (no bath in <30m²)
+WC
+1.2
+2
+Combined with SdB acceptable in studio
+Kitchenette
+2
+5
+Linear counter minimum
+Entry alcove
+0
+2
+Optional — door can open directly to main space
+Storage / Rangement
+0.5
+3
+Built-in wardrobe counts
+
+4.2 Small Apartment (35–65 m²)
+Room
+Min m²
+Max m²
+Notes
+Bedroom / Chambre
+9
+13
+Min 2.5m clear dimension
+Living room / Séjour
+12
+20
+Must fit sofa + coffee table + circulation
+Kitchen / Cuisine
+5
+10
+Min 3.6m linear counter
+Open plan (living+kitchen)
+17
+28
+If open plan requested
+Bathroom / SdB
+3.5
+6
+Shower mandatory, bath optional
+WC
+1.2
+2.2
+Separate from SdB preferred
+Entry / Entrée
+2
+5
+Min 0.9m passage width
+Corridor / Couloir
+1.5
+4
+Min 0.9m wide
+Laundry alcove / Buanderie
+0.8
+3
+Can be corridor niche
+
+4.3 Medium Apartment / House (65–120 m²)
+Room
+Min m²
+Max m²
+Notes
+Bedroom / Chambre
+9
+14
+Child rooms can be 9m²
+Master bedroom / Suite
+12
+20
+If requested, min 12m²
+Living room / Séjour
+16
+28
+Preferred south-facing
+Kitchen / Cuisine
+8
+14
+L or U counter configuration
+Dining room / SAM
+8
+14
+Can be open to living
+Bathroom / SdB
+4
+8
+Bath + shower preferred
+Second bathroom / SdE
+3
+5
+Shower only acceptable
+WC
+1.5
+2.5
+Always separate from main SdB
+Entry / Entrée
+3
+7
+Coat storage required
+Corridor / Couloir
+2
+6
+Max 1.2m wide unless stated
+Office / Bureau
+8
+12
+If requested
+Laundry / Buanderie
+3
+6
+Adjacent to kitchen preferred
+Storage / Rangement
+2
+5
+
+Garage
+18
+25
+Single car: 5m × 3.5m min
+
+4.4 Large House / Villa (120–300 m²)
+Room
+Min m²
+Max m²
+Notes
+Master suite (bedroom + dressing + SdB)
+25
+45
+Suite parentale cluster
+Bedroom / Chambre
+10
+18
+All must have exterior wall
+Living room / Séjour
+25
+50
+May include dining
+Dining room / SAM
+14
+25
+Separate from living preferred
+Kitchen
+12
+25
+Island mandatory if >16m²
+Scullery / Arrière-cuisine
+5
+10
+If separate kitchen requested
+Master bathroom
+8
+15
+Bath + shower + double sink
+Secondary bathroom
+5
+9
+
+WC (×2 recommended)
+1.5
+3
+One per floor minimum
+Entry / Hall
+6
+15
+Staircase included if duplex
+Corridor
+3
+10
+1.2m wide minimum
+Office / Bureau
+10
+20
+
+Laundry / Buanderie
+5
+10
+
+Garage (double)
+35
+50
+Two cars: 6m × 6m min
+Terrace / Terrasse
+15
+60
+If mentioned
+Boiler / Technique
+4
+8
+
+
+4.5 Villa & Estate (300–1000 m²)
+Room / Zone
+Min m²
+Typical m²
+Notes
+Master suite cluster
+40
+70
+Bedroom + 2 dressings + spa bathroom
+Guest bedroom suite
+20
+30
+Each with en-suite bathroom
+Children wing
+30
+60
+2–3 rooms + bathroom + study area
+Grand salon / Great room
+40
+80
+May include fireplace zone
+Formal dining
+20
+35
+Separate from kitchen
+Professional kitchen
+20
+40
+Island + scullery + pantry
+Home cinema
+20
+45
+Soundproofed
+Gym / Fitness
+20
+50
+
+Indoor pool / Piscine intérieure
+50
+150
+If mentioned
+Wine cellar / Cave
+10
+30
+
+Staff quarters
+25
+50
+If mentioned
+Garage (3+ cars)
+55
+120
+
+Technical / Boiler zone
+10
+25
+
+
+SECTION 5 — AREA DISTRIBUTION ALGORITHM
+
+5. How to Distribute Area Across Rooms
+When the user does not specify individual room sizes, the system calculates them using this algorithm. Wall thickness accounts for approximately 8–12% of total area — always subtract this first.
+
+5.1 Net vs Gross Area
+⚠️  CRITICAL: Always subtract wall area before distributing rooms. Walls consume 8–12% of total gross area. Never fill 100% of the footprint with rooms — it creates impossible geometry.
+
+Gross Area
+Wall Factor
+Net Usable Area
+< 50 m²
+× 0.90
+45 m² usable from 50 m² gross
+50–100 m²
+× 0.88
+88 m² usable from 100 m² gross
+100–200 m²
+× 0.87
+130 m² usable from 150 m² gross
+200–400 m²
+× 0.86
+258 m² usable from 300 m² gross
+> 400 m²
+× 0.85
+340 m² usable from 400 m² gross
+
+5.2 Area Budget Distribution by Zone
+After calculating net usable area, distribute as follows (percentages of NET area):
+
+Zone
+20–50 m²
+50–100 m²
+100–200 m²
+200+ m²
+Private (bedrooms + bathrooms)
+45%
+42%
+40%
+38%
+Public (living + kitchen + dining)
+40%
+43%
+45%
+47%
+Service (garage + laundry + storage)
+5%
+7%
+8%
+10%
+Circulation (entry + corridors)
+10%
+8%
+7%
+5%
+
+5.3 Room Budget Within Private Zone
+Within the private zone budget, distribute between bedrooms and bathrooms:
+
+Bedroom Count
+Bedroom Share
+Bathroom Share
+Notes
+1 bedroom
+75%
+25%
+Often combined SdB/WC
+2 bedrooms
+72%
+28%
+1 SdB + 1 WC
+3 bedrooms
+70%
+30%
+1 SdB + 1 SdE + 1 WC
+4 bedrooms
+68%
+32%
+2 SdB + 1 SdE + 2 WC
+5+ bedrooms
+65%
+35%
+Suite + en-suites preferred
+
+SECTION 6 — FOOTPRINT & ASPECT RATIO RULES
+
+6. Default Aspect Ratios & Footprint Selection
+When only area is given (no W×H), the system must select realistic dimensions. Aspect ratio = width ÷ height. Real buildings rarely exceed 2:1 or go below 1:1.
+
+Area Range
+Default Ratio
+Width (m)
+Height (m)
+Why
+15–25 m²
+1.30 : 1
+5.7
+4.4
+Studio — nearly square
+25–40 m²
+1.35 : 1
+7.3
+5.4
+T1/T2 — slight landscape
+40–60 m²
+1.40 : 1
+8.9
+6.4
+T2/T3 — standard
+60–80 m²
+1.35 : 1
+10.4
+7.7
+T3 — close to square
+80–100 m²
+1.30 : 1
+11.4
+8.8
+T3/T4 — proportioned
+100–130 m²
+1.25 : 1
+12.7
+10.2
+T4/T5 — house proportions
+130–180 m²
+1.20 : 1
+14.7
+12.2
+Villa — wide front
+180–250 m²
+1.15 : 1
+17.0
+14.7
+Large villa
+250–400 m²
+1.10 : 1
+20.9
+19.0
+Estate — near square
+400+ m²
+1.05 : 1
+↑
+↑
+Scale up proportionally
+
+📐  If the user specifies a narrow plot (e.g. 'terrain de 6m de large'), the system must adapt: use narrow-house templates with rooms arranged in a single-loaded corridor. Minimum building width = 4.5m.
+
+6.1 Special Footprint Cases
+User Input
+Detected Shape
+Layout Adaptation
+terrain étroit / narrow plot < 7m
+Narrow linear
+Single-loaded corridor, rooms on one side
+terrain carré / square plot
+Square
+Use 1:1 ratio, central corridor or open plan
+terrain en L / L-shaped plot
+L-shape
+Fill L, do not create interior dead zones
+terrain en pente / sloping site
+Split level
+Flag for duplex or stepped layout
+angle / corner lot
+Corner
+Two exterior faces — entry on shorter street
+forme irrégulière / irregular
+Freeform
+Use bounding rectangle, flag irregular areas
+villa avec cour / with courtyard
+Courtyard
+Wrap rooms around inner court
+construction mitoyenne / attached
+Party wall
+Windows only on 2 free sides
+
+SECTION 7 — VALIDATION RULES & ERROR HANDLING
+
+7. Layout Validation Checklist
+Every generated layout must pass ALL of these checks before SVG is rendered. Failures trigger an automatic correction pass (max 3 iterations). Remaining violations are surfaced to the user.
+
+7.1 Hard Rules (must pass — generation fails if violated after 3 attempts)
+Entry is on an exterior wall with a door opening to outside
+No room has zero access from entry (every room reachable)
+No bathroom or WC shares a wall with kitchen or dining room
+Total rendered area is within 8% of requested gross area
+No room bounding box overlaps any other room bounding box
+Every door has 0.9m clearance in front of it (no furniture blocking)
+No room is below its absolute minimum size (see Section 4)
+Corridor width is never below 0.9m
+
+7.2 Soft Rules (warnings shown to user, layout proceeds)
+Living room does not face preferred direction (south if requested)
+Bedroom has no exterior wall window
+Corridor exceeds 3m when user asked to avoid long corridors
+WC is not adjacent to entry (when 'near entry' was requested)
+Open plan requested but partial wall remains
+Room is below recommended size but above absolute minimum
+Buanderie requested but only niche provided, not full room
+
+7.3 Auto-Correction Priority Order
+When violations are found, fix in this order:
+1. Fix overlaps — shrink larger room first
+2. Fix rooms below minimum — take space from corridor, then storage
+3. Fix forbidden adjacencies — swap room positions
+4. Fix missing access — add corridor segment
+5. Fix area budget — proportionally resize all rooms
+
+SECTION 8 — USER FEEDBACK MESSAGES
+
+8. What to Tell the User
+When the system makes assumptions, adjusts inputs, or finds violations, it must communicate this clearly in the UI — not silently. All messages in both French and English.
+
+Situation
+FR Message
+EN Message
+Area too vague
+Surface estimée à ~65m². Ajustez si besoin.
+Area estimated at ~65m². Adjust if needed.
+Room below min
+⚠️ WC trop petit (1.0m²). Minimum: 1.5m².
+⚠️ WC too small (1.0m²). Minimum: 1.5m².
+Room missing from prompt
+WC ajouté automatiquement (non précisé).
+WC added automatically (not specified).
+Constraint ignored
+❌ WC près entrée impossible — placé en couloir.
+❌ WC near entry not possible — placed in corridor.
+Open plan applied
+Salon et cuisine fusionnés (plan ouvert).
+Living and kitchen merged (open plan).
+Corridor minimized
+Couloir réduit à 1.8m — accès direct préservé.
+Corridor reduced to 1.8m — direct access kept.
+Unit converted
+350 sq ft = 32.5 m² (converti automatiquement).
+350 sq ft = 32.5 m² (auto-converted).
+Area exceeded
+Surface totale: 68m² (+4.6%). Ajustez si besoin.
+Total area: 68m² (+4.6%). Adjust if needed.
+Template applied
+Modèle T3 appliqué. Modifiez les pièces ci-dessous.
+T3 template applied. Edit rooms below.
+3 correction attempts failed
+⚠️ Certaines contraintes sont incompatibles. Voir détails.
+⚠️ Some constraints are incompatible. See details.
+
+AI Floor Plan System — Architectural Specification Guide
+This document must be included in the system prompt / context of the generation engine
